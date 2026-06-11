@@ -64,19 +64,163 @@ body {
   padding: 20px;
 }
 
+.card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
 .card__title {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 1.1rem;
 }
 
-.card__hint {
-  margin: 0 0 16px;
-  color: var(--muted);
-  font-size: 0.9rem;
+.card__err {
+  color: #e0a800;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.card__status {
+.muted {
+  color: var(--muted);
   margin: 0;
-  color: var(--accent);
+}
+
+/* Metrics with bars */
+.metric {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.metric__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.metric__val {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #0c0e12;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.bar__fill.bar--warn {
+  background: #e0a800;
+}
+.bar__fill.bar--hot {
+  background: #e5484d;
+}
+
+.host__foot {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.host__foot strong {
+  color: var(--text);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: #0c0e12;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row lists (docker containers, k3s pods) */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.rows--scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #1f232b;
+}
+.row:last-child {
+  border-bottom: none;
+}
+
+.row__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__ns {
+  color: var(--muted);
+  font-size: 0.72rem;
+  flex-shrink: 0;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__num {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: right;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+  background: var(--muted);
+}
+.dot--ok {
+  background: #30a46c;
+}
+.dot--warn {
+  background: #e0a800;
+}
+.dot--bad {
+  background: #e5484d;
 }
