@@ -1,6 +1,6 @@
 # Build/run the dashboard via Docker so no Node/Go toolchain is needed on the host.
 #
-#   Production (static dashboard on :8080 + data API behind its /api proxy):
+#   Production (static dashboard on :7272 + data API behind its /api proxy):
 #     docker compose -f infra/docker/docker-compose.yml up -d --build dashboard-api dashboard
 #
 #   Development (Vite dev server + hot reload on :5173, source bind-mounted):
@@ -17,7 +17,7 @@ services:
     image: server-dashboard:latest
     container_name: server-dashboard
     ports:
-      - "8080:80"
+      - "7272:80"
     restart: unless-stopped
     depends_on:
       - dashboard-api
