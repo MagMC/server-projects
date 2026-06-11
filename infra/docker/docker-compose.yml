@@ -1,0 +1,37 @@
+# Build/run the dashboard via Docker so no Node toolchain is needed on the host.
+#
+#   Production (build static assets, serve via nginx on :8080):
+#     docker compose -f infra/docker/docker-compose.yml up -d --build dashboard
+#
+#   Development (Vite dev server + hot reload on :5173, source bind-mounted):
+#     docker compose -f infra/docker/docker-compose.yml --profile dev up dashboard-dev
+#
+# Build context is the repo root so the pnpm workspace resolves.
+
+services:
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: apps/dashboard/Dockerfile
+    image: server-dashboard:latest
+    container_name: server-dashboard
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  dashboard-dev:
+    image: node:20-alpine
+    profiles: ["dev"]
+    working_dir: /repo
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm --filter dashboard dev --host"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../..:/repo
+      # Keep node_modules inside named volumes so the host stays clean.
+      - dashboard-root-modules:/repo/node_modules
+      - dashboard-app-modules:/repo/apps/dashboard/node_modules
+
+volumes:
+  dashboard-root-modules:
+  dashboard-app-modules:
