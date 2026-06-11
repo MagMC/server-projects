@@ -84,6 +84,11 @@ func (h *HostCollector) readUptime() int64 {
 }
 
 func (h *HostCollector) readDisks() []model.DiskUsage {
+	// Map the in-process mount path -> backing device, so we can report e.g.
+	// /dev/nvme0n1p1. We read the *process'* own /proc/mounts (not HOST_PROC)
+	// because the configured paths (/host/root, ...) are this container's view.
+	devices := readMountDevices("/proc/mounts")
+
 	out := make([]model.DiskUsage, 0, len(h.cfg.DiskMounts))
 	for _, m := range h.cfg.DiskMounts {
 		var st syscall.Statfs_t
@@ -100,11 +105,32 @@ func (h *HostCollector) readDisks() []model.DiskUsage {
 		}
 		out = append(out, model.DiskUsage{
 			Mount:      diskLabel(m),
+			Device:     devices[m],
 			TotalBytes: total,
 			UsedBytes:  used,
 			FreeBytes:  free,
 			UsedPct:    pct,
 		})
+	}
+	return out
+}
+
+// readMountDevices parses /proc/mounts into mountpoint -> device. Later entries
+// win (the effective mount). Octal escapes like \040 are left as-is since our
+// configured paths contain none.
+func readMountDevices(path string) map[string]string {
+	out := map[string]string{}
+	f, err := os.Open(path)
+	if err != nil {
+		return out
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		fields := strings.Fields(sc.Text())
+		if len(fields) >= 2 {
+			out[fields[1]] = fields[0]
+		}
 	}
 	return out
 }
@@ -140,10 +166,13 @@ func (h *HostCollector) readThermal() ([]model.ThermalZone, *float64) {
 }
 
 // diskLabel turns the in-container mount path back into a host-friendly label,
-// e.g. /host/root -> "/", /host/data -> "/data".
+// e.g. /host/root -> "/", /host/root/mnt/data -> "/mnt/data".
 func diskLabel(mount string) string {
-	if mount == "/host/root" {
-		return "/"
+	if s := strings.TrimPrefix(mount, "/host/root"); s != mount {
+		if s == "" {
+			return "/"
+		}
+		return s
 	}
 	if s := strings.TrimPrefix(mount, "/host"); s != mount && s != "" {
 		return s

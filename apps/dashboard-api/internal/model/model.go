@@ -11,6 +11,7 @@ type ThermalZone struct {
 // DiskUsage is one mounted filesystem.
 type DiskUsage struct {
 	Mount      string  `json:"mount"`
+	Device     string  `json:"device"` // e.g. /dev/nvme0n1p1, "" if unknown
 	TotalBytes uint64  `json:"totalBytes"`
 	UsedBytes  uint64  `json:"usedBytes"`
 	FreeBytes  uint64  `json:"freeBytes"`

@@ -108,7 +108,12 @@ function HostPanel() {
           </div>
           {data.disks.map((d) => (
             <div className="metric" key={d.mount}>
-              <span className="metric__label">Disk {d.mount}</span>
+              <span className="metric__label">
+                {d.mount}
+                {d.device && (
+                  <span className="metric__dev">{d.device.replace('/dev/', '')}</span>
+                )}
+              </span>
               <Bar value={d.usedPct} />
               <span className="metric__val">
                 {bytes(d.usedBytes)} / {bytes(d.totalBytes)}

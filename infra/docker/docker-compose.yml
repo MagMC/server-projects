@@ -41,7 +41,8 @@ services:
       PORT: "3001"
       HOST_PROC: /host/proc
       HOST_SYS: /host/sys
-      DISK_MOUNTS: /host/root
+      # Each shows as its own bar: / (root SSD), /mnt/data (NVMe), HDD.
+      DISK_MOUNTS: /host/root,/host/root/mnt/data,/host/root/media/plex-drive
       DOCKER_HOST: unix:///var/run/docker.sock
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       K3S_SERVER: https://host.docker.internal:6443 # override kubeconfig's 127.0.0.1

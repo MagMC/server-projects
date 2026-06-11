@@ -8,6 +8,7 @@ export interface ThermalZone {
 
 export interface DiskUsage {
   mount: string
+  device: string
   totalBytes: number
   usedBytes: number
   freeBytes: number
