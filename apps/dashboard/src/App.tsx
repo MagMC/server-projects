@@ -1,7 +1,48 @@
+import { useEffect, useState } from 'react'
 import { usePolling } from './usePolling'
 import { bytes, milliCores, pct, uptime } from './format'
 import type { ContainerInfo, HostStats, K3sData } from './types'
 import './App.css'
+
+function useClock(): Date {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return now
+}
+
+function greeting(h: number): string {
+  if (h < 5) return 'Good night'
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function Header() {
+  const now = useClock()
+  const hh = now.getHours().toString().padStart(2, '0')
+  const mm = now.getMinutes().toString().padStart(2, '0')
+  const date = now.toLocaleDateString(undefined, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  return (
+    <header className="hero">
+      <div className="hero__clock">
+        {hh}
+        <span className="hero__colon">:</span>
+        {mm}
+      </div>
+      <div className="hero__meta">
+        <p className="hero__greet">{greeting(now.getHours())}</p>
+        <p className="hero__date">{date}</p>
+      </div>
+    </header>
+  )
+}
 
 function Bar({ value }: { value: number | null }) {
   const v = Math.max(0, Math.min(100, value ?? 0))
@@ -15,10 +56,12 @@ function Bar({ value }: { value: number | null }) {
 
 function Card({
   title,
+  badge,
   error,
   children,
 }: {
   title: string
+  badge?: string
   error: string | null
   children: React.ReactNode
 }) {
@@ -26,7 +69,13 @@ function Card({
     <article className="card">
       <div className="card__head">
         <h2 className="card__title">{title}</h2>
-        {error && <span className="card__err" title={error}>stale</span>}
+        {error ? (
+          <span className="card__err" title={error}>
+            ◆ stale
+          </span>
+        ) : (
+          badge && <span className="card__badge">{badge}</span>
+        )}
       </div>
       {children}
     </article>
@@ -36,9 +85,13 @@ function Card({
 function HostPanel() {
   const { data, error } = usePolling<HostStats>('/api/host')
   return (
-    <Card title="Host" error={error}>
+    <Card
+      title="Host"
+      error={error}
+      badge={data ? `up ${uptime(data.uptimeSec)}` : undefined}
+    >
       {!data ? (
-        <p className="muted">loading…</p>
+        <p className="muted">syncing…</p>
       ) : (
         <div className="host">
           <div className="metric">
@@ -62,20 +115,17 @@ function HostPanel() {
               </span>
             </div>
           ))}
-          <div className="host__foot">
-            <span>
-              CPU temp <strong>{data.cpuTempC != null ? `${data.cpuTempC}°C` : '—'}</strong>
-            </span>
-            <span>
-              up <strong>{uptime(data.uptimeSec)}</strong>
-            </span>
-          </div>
           <div className="chips">
-            {data.thermalZones.map((z) => (
-              <span className="chip" key={z.type}>
-                {z.type} {z.tempC}°
-              </span>
-            ))}
+            {data.cpuTempC != null && (
+              <span className="chip chip--hot">CPU {data.cpuTempC}°C</span>
+            )}
+            {data.thermalZones
+              .filter((z) => z.type !== 'x86_pkg_temp')
+              .map((z) => (
+                <span className="chip" key={z.type}>
+                  {z.type} {z.tempC}°
+                </span>
+              ))}
           </div>
         </div>
       )}
@@ -92,11 +142,15 @@ function stateClass(state: string): string {
 function DockerPanel() {
   const { data, error } = usePolling<ContainerInfo[]>('/api/docker/containers')
   return (
-    <Card title={`Docker${data ? ` · ${data.length}` : ''}`} error={error}>
+    <Card
+      title="Docker"
+      error={error}
+      badge={data ? `${data.length} running` : undefined}
+    >
       {!data ? (
-        <p className="muted">loading…</p>
+        <p className="muted">syncing…</p>
       ) : (
-        <div className="rows">
+        <div className="rows rows--scroll">
           {data.map((c) => (
             <div className="row" key={c.id}>
               <span className={stateClass(c.state)} title={c.status} />
@@ -122,9 +176,13 @@ function phaseClass(phase: string): string {
 function K3sPanel() {
   const { data, error } = usePolling<K3sData>('/api/k3s')
   return (
-    <Card title={`k3s${data ? ` · ${data.pods.length} pods` : ''}`} error={error}>
+    <Card
+      title="k3s"
+      error={error}
+      badge={data ? `${data.pods.length} pods` : undefined}
+    >
       {!data ? (
-        <p className="muted">loading…</p>
+        <p className="muted">syncing…</p>
       ) : (
         <>
           {data.nodes.map((n) => (
@@ -158,17 +216,23 @@ function K3sPanel() {
 
 function App() {
   return (
-    <main className="app">
-      <header className="app__header">
-        <h1>Server Dashboard</h1>
-        <span className="app__host">server .72</span>
-      </header>
-      <section className="grid">
-        <HostPanel />
-        <DockerPanel />
-        <K3sPanel />
-      </section>
-    </main>
+    <div className="app">
+      <div className="app__scrim" />
+      <main className="app__inner">
+        <Header />
+        <section className="grid">
+          <HostPanel />
+          <DockerPanel />
+          <K3sPanel />
+        </section>
+        <footer className="credit">
+          server .72 — art by{' '}
+          <a href="https://metronovon.com" target="_blank" rel="noreferrer">
+            metronovon
+          </a>
+        </footer>
+      </main>
+    </div>
   )
 }
 
