@@ -1,0 +1,26 @@
+# Node
+node_modules/
+dist/
+.cache/
+*.local
+
+# pnpm
+.pnpm-store/
+
+# Build outputs
+build/
+out/
+
+# Env files — never commit secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
