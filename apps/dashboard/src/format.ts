@@ -15,6 +15,18 @@ export function milliCores(m: number | null | undefined): string {
   return m == null ? '—' : `${(m / 1000).toFixed(2)} cores`
 }
 
+// Friendly names for Linux thermal-zone kernel types.
+export function thermalLabel(type: string): string {
+  const t = type.toLowerCase()
+  if (t === 'x86_pkg_temp' || t.startsWith('coretemp')) return 'CPU'
+  if (t === 'acpitz') return 'Board'
+  if (t.startsWith('pch')) return 'Chipset'
+  if (t.startsWith('iwlwifi') || t.includes('wifi') || t.includes('wlan')) return 'Wi-Fi'
+  if (t.startsWith('nvme')) return 'SSD'
+  if (t.includes('gpu') || t.startsWith('amdgpu')) return 'GPU'
+  return type
+}
+
 export function uptime(sec: number): string {
   if (!sec) return '—'
   const d = Math.floor(sec / 86400)

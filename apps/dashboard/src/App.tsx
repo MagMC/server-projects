@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { usePolling } from './usePolling'
-import { bytes, milliCores, pct, uptime } from './format'
+import { bytes, milliCores, pct, thermalLabel, uptime } from './format'
 import type { ContainerInfo, HostStats, K3sData } from './types'
 import './App.css'
 
@@ -122,8 +122,8 @@ function HostPanel() {
             {data.thermalZones
               .filter((z) => z.type !== 'x86_pkg_temp')
               .map((z) => (
-                <span className="chip" key={z.type}>
-                  {z.type} {z.tempC}°
+                <span className="chip" key={z.type} title={z.type}>
+                  {thermalLabel(z.type)} {z.tempC}°
                 </span>
               ))}
           </div>
