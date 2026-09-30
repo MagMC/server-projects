@@ -59,3 +59,23 @@ export interface K3sData {
   nodes: K3sNode[]
   pods: K3sPod[]
 }
+
+export interface ClaudeStatus {
+  session: string
+  available: boolean
+  exists: boolean
+  running: boolean
+  command: string
+  path: string
+  createdAt: number
+  attached: number
+  width: number
+  height: number
+  controlEnabled: boolean
+  error?: string
+}
+
+export interface ClaudeScreen {
+  text: string
+  width: number
+}

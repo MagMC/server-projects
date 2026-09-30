@@ -3,8 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
+
+	"github.com/magmc/server-projects/dashboard-api/internal/claude"
+	"github.com/magmc/server-projects/dashboard-api/internal/model"
 )
 
 const requestTimeout = 8 * time.Second
@@ -55,4 +59,55 @@ func (s *Server) handleK3s(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
+}
+
+func (s *Server) handleClaudeStatus(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+	st := s.claude.Status(ctx)
+	st.ControlEnabled = s.token != ""
+	writeJSON(w, http.StatusOK, st)
+}
+
+// screenHistory is how many scrollback lines the session viewer gets.
+const screenHistory = 300
+
+func (s *Server) handleClaudeScreen(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+	text, err := s.claude.Capture(ctx, screenHistory)
+	if err != nil {
+		writeClaudeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, model.ClaudeScreen{Text: text, Width: s.claude.Status(ctx).Width})
+}
+
+func (s *Server) handleClaudeStart(w http.ResponseWriter, r *http.Request) {
+	s.claudeAction(w, r, s.claude.Start)
+}
+
+func (s *Server) handleClaudeStop(w http.ResponseWriter, r *http.Request) {
+	s.claudeAction(w, r, s.claude.Stop)
+}
+
+// claudeAction runs start/stop and replies with the resulting status.
+func (s *Server) claudeAction(w http.ResponseWriter, r *http.Request, act func(context.Context) error) {
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+	if err := act(ctx); err != nil {
+		writeClaudeErr(w, err)
+		return
+	}
+	st := s.claude.Status(ctx)
+	st.ControlEnabled = true
+	writeJSON(w, http.StatusOK, st)
+}
+
+func writeClaudeErr(w http.ResponseWriter, err error) {
+	status := http.StatusBadGateway
+	if errors.Is(err, claude.ErrConflict) {
+		status = http.StatusConflict
+	}
+	writeErr(w, status, err.Error())
 }

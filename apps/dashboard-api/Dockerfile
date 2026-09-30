@@ -12,7 +12,9 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/dashboard-api ./cm
 
 FROM alpine:3.20 AS runtime
 # ca-certificates: needed for TLS to the k3s API server.
-RUN apk add --no-cache ca-certificates && adduser -D -u 10001 app
+# tmux: client for the host's tmux server (Claude session). Must speak the same
+# protocol as the host's tmux (3.4 on both today).
+RUN apk add --no-cache ca-certificates tmux && adduser -D -u 10001 app
 COPY --from=build /out/dashboard-api /usr/local/bin/dashboard-api
 USER app
 ENV PORT=3001

@@ -325,3 +325,176 @@ body {
 .credit a:hover {
   text-decoration: underline;
 }
+
+/* ---- Claude session panel ---- */
+.claude {
+  display: grid;
+  gap: 14px;
+}
+
+.claude__status {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(240, 167, 71, 0.16);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.claude__status:not(:disabled):hover,
+.claude__status:not(:disabled):active {
+  border-color: rgba(240, 167, 71, 0.5);
+  background: rgba(0, 0, 0, 0.38);
+}
+.claude__status:disabled {
+  cursor: default;
+}
+
+.claude__state {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.claude__view {
+  margin-left: auto;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--spice);
+}
+
+.claude__meta {
+  display: grid;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.claude__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.claude__hint {
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.claude__err {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--warn);
+  overflow-wrap: anywhere;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  width: 58px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 167, 71, 0.3);
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s;
+}
+.switch--on {
+  background: linear-gradient(90deg, var(--spice-deep), var(--spice));
+  border-color: var(--spice);
+  box-shadow: 0 0 14px rgba(240, 167, 71, 0.5);
+}
+.switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sand);
+  transition: transform 0.25s ease;
+}
+.switch--on .switch__knob {
+  transform: translateX(26px);
+}
+
+/* Session viewer modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(env(safe-area-inset-top), 24px) 16px 24px;
+  background: rgba(10, 6, 3, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal__box {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 100%);
+  max-height: 100%;
+  padding: 18px 20px 20px;
+  background: rgba(24, 15, 8, 0.92);
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.modal__box .card__head {
+  gap: 12px;
+}
+.modal__box .card__title {
+  margin-right: auto;
+}
+
+.modal__close {
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  color: var(--sand);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(240, 167, 71, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.term {
+  --term-bg: #0f0a06;
+  --term-fg: #e8dcc8;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
+  height: 70vh;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--term-bg);
+  color: var(--term-fg);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* Scale so the pane's columns fit the box width; scroll sideways if not. */
+  font-size: clamp(9px, calc((min(1100px, 100vw) - 110px) / (var(--cols) * 0.62)), 14px);
+  line-height: 1.25;
+  white-space: pre;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(240, 167, 71, 0.3) transparent;
+}

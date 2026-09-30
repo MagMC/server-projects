@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { usePolling } from './usePolling'
 import { bytes, milliCores, pct, thermalLabel, uptime } from './format'
 import type { ContainerInfo, HostStats, K3sData } from './types'
+import { Card } from './Card'
+import { ClaudePanel } from './ClaudePanel'
 import './App.css'
 
 function useClock(): Date {
@@ -51,34 +53,6 @@ function Bar({ value }: { value: number | null }) {
     <div className="bar">
       <div className={`bar__fill ${tone}`} style={{ width: `${v}%` }} />
     </div>
-  )
-}
-
-function Card({
-  title,
-  badge,
-  error,
-  children,
-}: {
-  title: string
-  badge?: string
-  error: string | null
-  children: React.ReactNode
-}) {
-  return (
-    <article className="card">
-      <div className="card__head">
-        <h2 className="card__title">{title}</h2>
-        {error ? (
-          <span className="card__err" title={error}>
-            ◆ stale
-          </span>
-        ) : (
-          badge && <span className="card__badge">{badge}</span>
-        )}
-      </div>
-      {children}
-    </article>
   )
 }
 
@@ -229,6 +203,7 @@ function App() {
           <HostPanel />
           <DockerPanel />
           <K3sPanel />
+          <ClaudePanel />
         </section>
         <footer className="credit">
           server .72 — art by{' '}

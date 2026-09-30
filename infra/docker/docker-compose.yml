@@ -33,6 +33,8 @@ services:
     image: server-dashboard-api:latest
     container_name: server-dashboard-api
     restart: unless-stopped
+    # Host uid 'mag': tmux only lets the socket owner's uid talk to its server.
+    user: "1000:1000"
     expose:
       - "3001"
     group_add:
@@ -46,6 +48,14 @@ services:
       DOCKER_HOST: unix:///var/run/docker.sock
       KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       K3S_SERVER: https://host.docker.internal:6443 # override kubeconfig's 127.0.0.1
+      # Claude Code tmux session on the host (socket reached via the / mount).
+      TMUX_SOCKET: /host/root/tmp/tmux-1000/default
+      CLAUDE_SESSION: claude
+      CLAUDE_WORKDIR: /home/mag/plague
+      CLAUDE_CMD: claude rc
+      # Bearer token for viewing/starting/stopping the session; lives in the
+      # gitignored infra/docker/.env. Unset = those routes are disabled.
+      CLAUDE_CONTROL_TOKEN: ${CLAUDE_CONTROL_TOKEN:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

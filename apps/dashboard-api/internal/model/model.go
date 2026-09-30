@@ -74,3 +74,25 @@ type K3sData struct {
 	Nodes []K3sNode `json:"nodes"`
 	Pods  []K3sPod  `json:"pods"`
 }
+
+// ClaudeStatus is the /claude/status response: the Claude Code tmux session on the host.
+type ClaudeStatus struct {
+	Session        string `json:"session"`        // tmux session name
+	Available      bool   `json:"available"`      // host tmux server reachable
+	Exists         bool   `json:"exists"`         // session exists
+	Running        bool   `json:"running"`        // claude is the pane's foreground process
+	Command        string `json:"command"`        // pane's foreground process (bash, claude, ...)
+	Path           string `json:"path"`           // pane's working directory
+	CreatedAt      int64  `json:"createdAt"`      // unix seconds
+	Attached       int    `json:"attached"`       // tmux clients attached
+	Width          int    `json:"width"`          // pane columns
+	Height         int    `json:"height"`         // pane rows
+	ControlEnabled bool   `json:"controlEnabled"` // a control token is configured
+	Error          string `json:"error,omitempty"`
+}
+
+// ClaudeScreen is the /claude/screen response.
+type ClaudeScreen struct {
+	Text  string `json:"text"` // pane contents incl. scrollback, with ANSI escapes
+	Width int    `json:"width"`
+}

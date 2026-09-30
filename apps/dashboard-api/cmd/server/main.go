@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/magmc/server-projects/dashboard-api/internal/api"
+	"github.com/magmc/server-projects/dashboard-api/internal/claude"
 	"github.com/magmc/server-projects/dashboard-api/internal/collect"
 	"github.com/magmc/server-projects/dashboard-api/internal/config"
 )
@@ -33,7 +34,12 @@ func main() {
 		log.Printf("k3s collector unavailable: %v", k3sErr)
 	}
 
-	srv := api.NewServer(host, docker, dockerErr, k3s, k3sErr)
+	cl := claude.NewController(cfg.TmuxSocket, cfg.ClaudeSession, cfg.ClaudeWorkdir, cfg.ClaudeCmd)
+	if cfg.ControlToken == "" {
+		log.Printf("CLAUDE_CONTROL_TOKEN not set: claude screen/start/stop disabled")
+	}
+
+	srv := api.NewServer(host, docker, dockerErr, k3s, k3sErr, cl, cfg.ControlToken)
 
 	addr := ":" + cfg.Port
 	httpSrv := &http.Server{
