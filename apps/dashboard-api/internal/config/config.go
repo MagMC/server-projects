@@ -17,12 +17,41 @@ type Config struct {
 	Kubeconfig string
 	K3sServer  string // overrides the kubeconfig cluster server URL when set
 
-	// Claude Code tmux session on the host.
-	TmuxSocket    string // host tmux server socket, seen through the / mount
-	ClaudeSession string
-	ClaudeWorkdir string // where a freshly created session starts
-	ClaudeCmd     string // typed into the session's shell on start
-	ControlToken  string // bearer token for claude screen/start/stop; empty disables them
+	// Claude Code tmux sessions on the host.
+	TmuxSocket     string // host tmux server socket, seen through the / mount
+	ClaudeSessions []ClaudeSession
+	ControlToken   string // bearer token for claude screen/start/stop; empty disables them
+}
+
+// ClaudeSession is one tmux session the dashboard shows and controls.
+type ClaudeSession struct {
+	Name    string // tmux session name
+	Workdir string // where a freshly created session starts
+	Cmd     string // typed into the session's shell on start
+}
+
+// parseSessions reads "name|workdir|command" entries separated by ";" or
+// newlines. Workdir may be empty; command defaults to "claude".
+func parseSessions(s string) []ClaudeSession {
+	var out []ClaudeSession
+	for _, entry := range strings.FieldsFunc(s, func(r rune) bool { return r == ';' || r == '\n' }) {
+		f := strings.SplitN(entry, "|", 3)
+		for i := range f {
+			f[i] = strings.TrimSpace(f[i])
+		}
+		if f[0] == "" {
+			continue
+		}
+		sess := ClaudeSession{Name: f[0], Cmd: "claude"}
+		if len(f) > 1 {
+			sess.Workdir = f[1]
+		}
+		if len(f) > 2 && f[2] != "" {
+			sess.Cmd = f[2]
+		}
+		out = append(out, sess)
+	}
+	return out
 }
 
 func env(key, def string) string {
@@ -49,10 +78,8 @@ func Load() Config {
 		Kubeconfig: env("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml"),
 		K3sServer:  os.Getenv("K3S_SERVER"),
 
-		TmuxSocket:    env("TMUX_SOCKET", "/tmp/tmux-1000/default"),
-		ClaudeSession: env("CLAUDE_SESSION", "claude"),
-		ClaudeWorkdir: os.Getenv("CLAUDE_WORKDIR"),
-		ClaudeCmd:     env("CLAUDE_CMD", "claude"),
-		ControlToken:  os.Getenv("CLAUDE_CONTROL_TOKEN"),
+		TmuxSocket:     env("TMUX_SOCKET", "/tmp/tmux-1000/default"),
+		ClaudeSessions: parseSessions(env("CLAUDE_SESSIONS", "claude")),
+		ControlToken:   os.Getenv("CLAUDE_CONTROL_TOKEN"),
 	}
 }

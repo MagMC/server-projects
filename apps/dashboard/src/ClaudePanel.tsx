@@ -51,15 +51,46 @@ function stateOf(s: ClaudeStatus): { label: string; dot: string } {
   return { label: 'Off', dot: 'dot' }
 }
 
-export function ClaudePanel() {
-  const { data, error, refresh } = usePolling<ClaudeStatus>('/api/claude/status')
-  const [token, ensureToken, forgetToken] = useToken()
+// One panel per tmux session the API is configured with. The token is shared,
+// so it's held here rather than in each panel.
+export function ClaudePanels() {
+  const { data, error, refresh } = usePolling<ClaudeStatus[]>('/api/claude/status')
+  const tokenState = useToken()
+  if (!data) {
+    return (
+      <Card title="Claude" error={error}>
+        <p className="muted">syncing…</p>
+      </Card>
+    )
+  }
+  return (
+    <>
+      {data.map((s) => (
+        <ClaudePanel key={s.session} data={s} error={error} refresh={refresh} tokenState={tokenState} />
+      ))}
+    </>
+  )
+}
+
+function ClaudePanel({
+  data,
+  error,
+  refresh,
+  tokenState,
+}: {
+  data: ClaudeStatus
+  error: string | null
+  refresh: () => void
+  tokenState: ReturnType<typeof useToken>
+}) {
+  const [token, ensureToken, forgetToken] = tokenState
+  const api = `/api/claude/${encodeURIComponent(data.session)}`
   const [busy, setBusy] = useState(false)
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [viewing, setViewing] = useState(false)
 
   const toggle = async () => {
-    if (!data || busy) return
+    if (busy) return
     const stopping = data.running
     if (stopping && !window.confirm(`Stop Claude? This kills the tmux session "${data.session}".`)) return
     const t = ensureToken()
@@ -67,7 +98,7 @@ export function ClaudePanel() {
     setBusy(true)
     setActionErr(null)
     try {
-      const res = await fetch(`/api/claude/${stopping ? 'stop' : 'start'}`, {
+      const res = await fetch(`${api}/${stopping ? 'stop' : 'start'}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${t}` },
       })
@@ -85,65 +116,67 @@ export function ClaudePanel() {
   }
 
   const openViewer = () => {
-    if (data?.exists && ensureToken()) setViewing(true)
+    if (data.exists && ensureToken()) setViewing(true)
   }
 
-  const state = data ? stateOf(data) : null
-  const canControl = !!data?.available && data.controlEnabled
+  const state = stateOf(data)
+  const canControl = data.available && data.controlEnabled
 
   return (
-    <Card title="Claude" error={error} badge={data ? `tmux · ${data.session}` : undefined}>
-      {!data || !state ? (
-        <p className="muted">syncing…</p>
-      ) : (
-        <div className="claude">
+    <Card title="Claude" error={error} badge={`tmux · ${data.session}`}>
+      <div className="claude">
+        <button
+          type="button"
+          className="claude__status"
+          onClick={openViewer}
+          disabled={!data.exists || !data.controlEnabled}
+          title={data.exists ? 'View session' : undefined}
+        >
+          <span className="claude__state">
+            <span className={state.dot} /> {state.label}
+            {data.exists && data.controlEnabled && <span className="claude__view">view ›</span>}
+          </span>
+          {data.exists && (
+            <span className="claude__meta">
+              <span>{data.path.replace(/^\/home\/[^/]+/, '~')}</span>
+              <span>
+                up {uptime(Math.floor(Date.now() / 1000) - data.createdAt)} · {data.command}
+                {data.attached > 0 && ` · ${data.attached} attached`}
+              </span>
+            </span>
+          )}
+        </button>
+
+        <div className="claude__actions">
           <button
             type="button"
-            className="claude__status"
-            onClick={openViewer}
-            disabled={!data.exists || !data.controlEnabled}
-            title={data.exists ? 'View session' : undefined}
+            role="switch"
+            aria-checked={data.running}
+            className={`switch ${data.running ? 'switch--on' : ''}`}
+            onClick={toggle}
+            disabled={!canControl || busy}
           >
-            <span className="claude__state">
-              <span className={state.dot} /> {state.label}
-              {data.exists && data.controlEnabled && <span className="claude__view">view ›</span>}
-            </span>
-            {data.exists && (
-              <span className="claude__meta">
-                <span>{data.path.replace(/^\/home\/[^/]+/, '~')}</span>
-                <span>
-                  up {uptime(Math.floor(Date.now() / 1000) - data.createdAt)} · {data.command}
-                  {data.attached > 0 && ` · ${data.attached} attached`}
-                </span>
-              </span>
-            )}
+            <span className="switch__knob" />
           </button>
-
-          <div className="claude__actions">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={data.running}
-              className={`switch ${data.running ? 'switch--on' : ''}`}
-              onClick={toggle}
-              disabled={!canControl || busy}
-            >
-              <span className="switch__knob" />
-            </button>
-            <span className="muted claude__hint">
-              {busy ? 'working…' : data.running ? 'On' : 'Off'}
-            </span>
-          </div>
-
-          {(actionErr || data.error || !data.controlEnabled) && (
-            <p className="claude__err">
-              {actionErr ?? data.error ?? 'Controls disabled: CLAUDE_CONTROL_TOKEN not set'}
-            </p>
-          )}
+          <span className="muted claude__hint">
+            {busy ? 'working…' : data.running ? 'On' : 'Off'}
+          </span>
         </div>
-      )}
-      {viewing && data && (
-        <SessionViewer session={data.session} token={token} onClose={() => setViewing(false)} onBadToken={forgetToken} />
+
+        {(actionErr || data.error || !data.controlEnabled) && (
+          <p className="claude__err">
+            {actionErr ?? data.error ?? 'Controls disabled: CLAUDE_CONTROL_TOKEN not set'}
+          </p>
+        )}
+      </div>
+      {viewing && (
+        <SessionViewer
+          session={data.session}
+          url={`${api}/screen`}
+          token={token}
+          onClose={() => setViewing(false)}
+          onBadToken={forgetToken}
+        />
       )}
     </Card>
   )
@@ -151,16 +184,18 @@ export function ClaudePanel() {
 
 function SessionViewer({
   session,
+  url,
   token,
   onClose,
   onBadToken,
 }: {
   session: string
+  url: string
   token: string
   onClose: () => void
   onBadToken: () => void
 }) {
-  const { data, error } = usePolling<ClaudeScreen>(token ? '/api/claude/screen' : null, 1500, token)
+  const { data, error } = usePolling<ClaudeScreen>(token ? url : null, 1500, token)
   const segments = useMemo(() => (data ? parseAnsi(data.text) : []), [data])
   const termRef = useRef<HTMLPreElement>(null)
   // Follow new output unless the user has scrolled up to read history.

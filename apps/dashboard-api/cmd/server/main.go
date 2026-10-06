@@ -34,7 +34,10 @@ func main() {
 		log.Printf("k3s collector unavailable: %v", k3sErr)
 	}
 
-	cl := claude.NewController(cfg.TmuxSocket, cfg.ClaudeSession, cfg.ClaudeWorkdir, cfg.ClaudeCmd)
+	var cl []*claude.Controller
+	for _, s := range cfg.ClaudeSessions {
+		cl = append(cl, claude.NewController(cfg.TmuxSocket, s.Name, s.Workdir, s.Cmd))
+	}
 	if cfg.ControlToken == "" {
 		log.Printf("CLAUDE_CONTROL_TOKEN not set: claude screen/start/stop disabled")
 	}

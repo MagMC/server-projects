@@ -1,4 +1,4 @@
-// Package claude controls the Claude Code tmux session on the host. It talks to
+// Package claude controls the Claude Code tmux sessions on the host. It talks to
 // the host's tmux server over its socket (visible through the read-only / mount)
 // and only ever runs a fixed set of tmux commands: status, capture, start, stop.
 // There is deliberately no way to send arbitrary keys through it.
@@ -33,6 +33,9 @@ type Controller struct {
 func NewController(socket, session, workdir, startCmd string) *Controller {
 	return &Controller{socket: socket, session: session, workdir: workdir, startCmd: startCmd}
 }
+
+// Session is the tmux session name this controller manages.
+func (c *Controller) Session() string { return c.session }
 
 // tmux runs one tmux command against the host server. -N stops tmux from
 // spawning a server inside this container when the host's isn't running.

@@ -64,42 +64,68 @@ func (s *Server) handleK3s(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleClaudeStatus(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	defer cancel()
-	st := s.claude.Status(ctx)
-	st.ControlEnabled = s.token != ""
-	writeJSON(w, http.StatusOK, st)
+	out := make([]model.ClaudeStatus, 0, len(s.claude))
+	for _, c := range s.claude {
+		st := c.Status(ctx)
+		st.ControlEnabled = s.token != ""
+		out = append(out, st)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// claudeSession resolves the {session} path value to its controller, replying
+// 404 (and returning nil) if no such session is configured.
+func (s *Server) claudeSession(w http.ResponseWriter, r *http.Request) *claude.Controller {
+	name := r.PathValue("session")
+	for _, c := range s.claude {
+		if c.Session() == name {
+			return c
+		}
+	}
+	writeErr(w, http.StatusNotFound, "unknown session: "+name)
+	return nil
 }
 
 // screenHistory is how many scrollback lines the session viewer gets.
 const screenHistory = 300
 
 func (s *Server) handleClaudeScreen(w http.ResponseWriter, r *http.Request) {
+	c := s.claudeSession(w, r)
+	if c == nil {
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	defer cancel()
-	text, err := s.claude.Capture(ctx, screenHistory)
+	text, err := c.Capture(ctx, screenHistory)
 	if err != nil {
 		writeClaudeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, model.ClaudeScreen{Text: text, Width: s.claude.Status(ctx).Width})
+	writeJSON(w, http.StatusOK, model.ClaudeScreen{Text: text, Width: c.Status(ctx).Width})
 }
 
 func (s *Server) handleClaudeStart(w http.ResponseWriter, r *http.Request) {
-	s.claudeAction(w, r, s.claude.Start)
+	s.claudeAction(w, r, (*claude.Controller).Start)
 }
 
 func (s *Server) handleClaudeStop(w http.ResponseWriter, r *http.Request) {
-	s.claudeAction(w, r, s.claude.Stop)
+	s.claudeAction(w, r, (*claude.Controller).Stop)
 }
 
-// claudeAction runs start/stop and replies with the resulting status.
-func (s *Server) claudeAction(w http.ResponseWriter, r *http.Request, act func(context.Context) error) {
+// claudeAction runs start/stop on the requested session and replies with the
+// resulting status.
+func (s *Server) claudeAction(w http.ResponseWriter, r *http.Request, act func(*claude.Controller, context.Context) error) {
+	c := s.claudeSession(w, r)
+	if c == nil {
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	defer cancel()
-	if err := act(ctx); err != nil {
+	if err := act(c, ctx); err != nil {
 		writeClaudeErr(w, err)
 		return
 	}
-	st := s.claude.Status(ctx)
+	st := c.Status(ctx)
 	st.ControlEnabled = true
 	writeJSON(w, http.StatusOK, st)
 }

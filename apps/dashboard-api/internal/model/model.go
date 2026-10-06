@@ -75,7 +75,8 @@ type K3sData struct {
 	Pods  []K3sPod  `json:"pods"`
 }
 
-// ClaudeStatus is the /claude/status response: the Claude Code tmux session on the host.
+// ClaudeStatus is one entry of the /claude/status response: a Claude Code tmux
+// session on the host.
 type ClaudeStatus struct {
 	Session        string `json:"session"`        // tmux session name
 	Available      bool   `json:"available"`      // host tmux server reachable
@@ -91,7 +92,7 @@ type ClaudeStatus struct {
 	Error          string `json:"error,omitempty"`
 }
 
-// ClaudeScreen is the /claude/screen response.
+// ClaudeScreen is the /claude/{session}/screen response.
 type ClaudeScreen struct {
 	Text  string `json:"text"` // pane contents incl. scrollback, with ANSI escapes
 	Width int    `json:"width"`

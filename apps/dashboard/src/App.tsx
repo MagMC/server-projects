@@ -3,7 +3,7 @@ import { usePolling } from './usePolling'
 import { bytes, milliCores, pct, thermalLabel, uptime } from './format'
 import type { ContainerInfo, HostStats, K3sData } from './types'
 import { Card } from './Card'
-import { ClaudePanel } from './ClaudePanel'
+import { ClaudePanels } from './ClaudePanel'
 import './App.css'
 
 function useClock(): Date {
@@ -203,7 +203,7 @@ function App() {
           <HostPanel />
           <DockerPanel />
           <K3sPanel />
-          <ClaudePanel />
+          <ClaudePanels />
         </section>
         <footer className="credit">
           server .72 — art by{' '}
