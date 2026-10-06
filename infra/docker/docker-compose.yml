@@ -54,6 +54,9 @@ services:
       CLAUDE_SESSIONS: |
         claude|/home/mag/plague|claude rc
         job-search|/home/mag/job-search|claude remote-control --spawn=same-dir
+      # Claude Code's transcripts: what the conversations run from each
+      # session's workdir are doing (read-only, behind the token).
+      CLAUDE_PROJECTS_DIR: /host/root/home/mag/.claude/projects
       # Bearer token for viewing/starting/stopping a session; lives in the
       # gitignored infra/docker/.env. Unset = those routes are disabled.
       CLAUDE_CONTROL_TOKEN: ${CLAUDE_CONTROL_TOKEN:-}

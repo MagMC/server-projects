@@ -5,6 +5,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,7 +21,10 @@ type Config struct {
 	// Claude Code tmux sessions on the host.
 	TmuxSocket     string // host tmux server socket, seen through the / mount
 	ClaudeSessions []ClaudeSession
-	ControlToken   string // bearer token for claude screen/start/stop; empty disables them
+	ControlToken   string // bearer token for the protected claude routes; empty disables them
+	// Where Claude Code keeps its transcripts, seen through the / mount. Each
+	// session's conversations are found here by its workdir.
+	ClaudeProjectsDir string
 }
 
 // ClaudeSession is one tmux session the dashboard shows and controls.
@@ -61,6 +65,14 @@ func env(key, def string) string {
 	return def
 }
 
+func defaultProjectsDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".claude", "projects")
+}
+
 func Load() Config {
 	mounts := strings.Split(env("DISK_MOUNTS", "/"), ",")
 	clean := mounts[:0]
@@ -81,5 +93,7 @@ func Load() Config {
 		TmuxSocket:     env("TMUX_SOCKET", "/tmp/tmux-1000/default"),
 		ClaudeSessions: parseSessions(env("CLAUDE_SESSIONS", "claude")),
 		ControlToken:   os.Getenv("CLAUDE_CONTROL_TOKEN"),
+
+		ClaudeProjectsDir: env("CLAUDE_PROJECTS_DIR", defaultProjectsDir()),
 	}
 }

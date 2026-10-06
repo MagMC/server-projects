@@ -27,6 +27,13 @@ export function thermalLabel(type: string): string {
   return type
 }
 
+// "just now", "5m ago", "3h ago", "2d ago" for an ISO timestamp.
+export function ago(iso: string): string {
+  const sec = Math.floor((Date.now() - Date.parse(iso)) / 1000)
+  if (!(sec >= 60)) return 'just now'
+  return `${uptime(sec)} ago`
+}
+
 export function uptime(sec: number): string {
   if (!sec) return '—'
   const d = Math.floor(sec / 86400)

@@ -18,7 +18,10 @@ export function usePolling<T>(url: string | null, intervalMs = 4000, token?: str
   const alive = useRef(true)
 
   useEffect(() => {
-    if (!url) return
+    if (!url) {
+      setError(null) // paused: a stale error mustn't outlive the request it was for
+      return
+    }
     alive.current = true
     const tick = async () => {
       try {

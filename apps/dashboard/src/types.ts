@@ -75,6 +75,27 @@ export interface ClaudeStatus {
   error?: string
 }
 
+export interface ClaudeConversation {
+  id: string
+  title: string
+  branch: string
+  updatedAt: string
+  busy: boolean
+  last: string
+}
+
+export interface ClaudeEvent {
+  at: string
+  kind: 'user' | 'text' | 'tool'
+  text: string
+  tool?: string
+  failed?: boolean
+}
+
+export interface ClaudeConversationDetail extends ClaudeConversation {
+  events: ClaudeEvent[]
+}
+
 export interface ClaudeScreen {
   text: string
   width: number

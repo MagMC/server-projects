@@ -104,6 +104,27 @@ func (s *Server) handleClaudeScreen(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, model.ClaudeScreen{Text: text, Width: c.Status(ctx).Width})
 }
 
+func (s *Server) handleClaudeConversations(w http.ResponseWriter, r *http.Request) {
+	c := s.claudeSession(w, r)
+	if c == nil {
+		return
+	}
+	writeJSON(w, http.StatusOK, c.Conversations())
+}
+
+func (s *Server) handleClaudeConversation(w http.ResponseWriter, r *http.Request) {
+	c := s.claudeSession(w, r)
+	if c == nil {
+		return
+	}
+	conv, err := c.Conversation(r.PathValue("id"))
+	if err != nil {
+		writeClaudeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, conv)
+}
+
 func (s *Server) handleClaudeStart(w http.ResponseWriter, r *http.Request) {
 	s.claudeAction(w, r, (*claude.Controller).Start)
 }
@@ -132,8 +153,11 @@ func (s *Server) claudeAction(w http.ResponseWriter, r *http.Request, act func(*
 
 func writeClaudeErr(w http.ResponseWriter, err error) {
 	status := http.StatusBadGateway
-	if errors.Is(err, claude.ErrConflict) {
+	switch {
+	case errors.Is(err, claude.ErrConflict):
 		status = http.StatusConflict
+	case errors.Is(err, claude.ErrNotFound):
+		status = http.StatusNotFound
 	}
 	writeErr(w, status, err.Error())
 }

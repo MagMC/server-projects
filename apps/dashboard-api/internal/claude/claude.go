@@ -1,7 +1,9 @@
 // Package claude controls the Claude Code tmux sessions on the host. It talks to
 // the host's tmux server over its socket (visible through the read-only / mount)
 // and only ever runs a fixed set of tmux commands: status, capture, start, stop.
-// There is deliberately no way to send arbitrary keys through it.
+// There is deliberately no way to send arbitrary keys through it. It also reads
+// (never writes) the transcripts of the conversations run from each session's
+// workdir; see transcript.go.
 package claude
 
 import (
@@ -12,6 +14,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/magmc/server-projects/dashboard-api/internal/model"
 )
@@ -28,10 +31,17 @@ type Controller struct {
 	session  string
 	workdir  string
 	startCmd string
+
+	projectsDir string // Claude Code's transcript root (~/.claude/projects)
+	mu          sync.Mutex
+	transcripts map[string]*transcript // parsed transcripts by file path
 }
 
-func NewController(socket, session, workdir, startCmd string) *Controller {
-	return &Controller{socket: socket, session: session, workdir: workdir, startCmd: startCmd}
+func NewController(socket, session, workdir, startCmd, projectsDir string) *Controller {
+	return &Controller{
+		socket: socket, session: session, workdir: workdir, startCmd: startCmd,
+		projectsDir: projectsDir, transcripts: map[string]*transcript{},
+	}
 }
 
 // Session is the tmux session name this controller manages.

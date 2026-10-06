@@ -92,6 +92,32 @@ type ClaudeStatus struct {
 	Error          string `json:"error,omitempty"`
 }
 
+// ClaudeConversation is one entry of /claude/{session}/conversations: a Claude
+// Code conversation run from the session's workdir, read from its transcript.
+type ClaudeConversation struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`     // Claude's own title, else the first prompt
+	Branch    string `json:"branch"`    // git branch it last worked on, "" if none
+	UpdatedAt string `json:"updatedAt"` // RFC 3339, last transcript write
+	Busy      bool   `json:"busy"`      // a turn is in progress
+	Last      string `json:"last"`      // one-line summary of the newest event
+}
+
+// ClaudeEvent is one thing that happened in a conversation.
+type ClaudeEvent struct {
+	At     string `json:"at"`               // RFC 3339
+	Kind   string `json:"kind"`             // user | text | tool
+	Text   string `json:"text"`             // prompt, reply, or what the tool call does
+	Tool   string `json:"tool,omitempty"`   // tool name, for kind "tool"
+	Failed bool   `json:"failed,omitempty"` // the tool call returned an error
+}
+
+// ClaudeConversationDetail is the /claude/{session}/conversations/{id} response.
+type ClaudeConversationDetail struct {
+	ClaudeConversation
+	Events []ClaudeEvent `json:"events"` // newest last, capped
+}
+
 // ClaudeScreen is the /claude/{session}/screen response.
 type ClaudeScreen struct {
 	Text  string `json:"text"` // pane contents incl. scrollback, with ANSI escapes

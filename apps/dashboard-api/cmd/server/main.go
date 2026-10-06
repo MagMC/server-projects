@@ -36,10 +36,10 @@ func main() {
 
 	var cl []*claude.Controller
 	for _, s := range cfg.ClaudeSessions {
-		cl = append(cl, claude.NewController(cfg.TmuxSocket, s.Name, s.Workdir, s.Cmd))
+		cl = append(cl, claude.NewController(cfg.TmuxSocket, s.Name, s.Workdir, s.Cmd, cfg.ClaudeProjectsDir))
 	}
 	if cfg.ControlToken == "" {
-		log.Printf("CLAUDE_CONTROL_TOKEN not set: claude screen/start/stop disabled")
+		log.Printf("CLAUDE_CONTROL_TOKEN not set: claude screen/conversations/start/stop disabled")
 	}
 
 	srv := api.NewServer(host, docker, dockerErr, k3s, k3sErr, cl, cfg.ControlToken)

@@ -37,10 +37,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /k3s", s.handleK3s)
 
 	// Claude tmux sessions. Status (of all of them) is public like the rest; a
-	// screen can show secrets and start/stop change state, so those need the
-	// control token.
+	// screen or conversation can show secrets and start/stop change state, so
+	// those need the control token.
 	mux.HandleFunc("GET /claude/status", s.handleClaudeStatus)
 	mux.HandleFunc("GET /claude/{session}/screen", s.requireToken(s.handleClaudeScreen))
+	mux.HandleFunc("GET /claude/{session}/conversations", s.requireToken(s.handleClaudeConversations))
+	mux.HandleFunc("GET /claude/{session}/conversations/{id}", s.requireToken(s.handleClaudeConversation))
 	mux.HandleFunc("POST /claude/{session}/start", s.requireToken(s.handleClaudeStart))
 	mux.HandleFunc("POST /claude/{session}/stop", s.requireToken(s.handleClaudeStop))
 	return logRequests(mux)

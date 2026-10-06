@@ -2,9 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { createPortal } from 'react-dom'
 import { Card } from './Card'
 import { parseAnsi } from './ansi'
-import { uptime } from './format'
+import { ago, uptime } from './format'
 import { usePolling } from './usePolling'
-import type { ClaudeScreen, ClaudeStatus } from './types'
+import type { ClaudeConversation, ClaudeConversationDetail, ClaudeScreen, ClaudeStatus } from './types'
 
 // The control token lives only in this browser (the API checks it). Storage can
 // be unavailable (private mode), so every access is guarded.
@@ -88,6 +88,19 @@ function ClaudePanel({
   const [busy, setBusy] = useState(false)
   const [actionErr, setActionErr] = useState<string | null>(null)
   const [viewing, setViewing] = useState(false)
+  const [conversation, setConversation] = useState<string | null>(null)
+  // What Claude is doing lives in its transcripts, not the tmux pane (which for
+  // a remote-control session only shows the bridge's status line).
+  const convs = usePolling<ClaudeConversation[]>(
+    token && data.controlEnabled ? `${api}/conversations` : null,
+    5000,
+    token,
+  )
+  const badToken = convs.error === 'HTTP 401'
+  useEffect(() => {
+    if (badToken) forgetToken()
+    // forgetToken is a new function every render; only the 401 matters.
+  }, [badToken])
 
   const toggle = async () => {
     if (busy) return
@@ -163,6 +176,15 @@ function ClaudePanel({
           </span>
         </div>
 
+        {data.controlEnabled &&
+          (token ? (
+            <ConversationList items={convs.data} onOpen={setConversation} />
+          ) : (
+            <button type="button" className="claude__unlock" onClick={ensureToken}>
+              Show activity ›
+            </button>
+          ))}
+
         {(actionErr || data.error || !data.controlEnabled) && (
           <p className="claude__err">
             {actionErr ?? data.error ?? 'Controls disabled: CLAUDE_CONTROL_TOKEN not set'}
@@ -178,7 +200,130 @@ function ClaudePanel({
           onBadToken={forgetToken}
         />
       )}
+      {conversation && (
+        <ConversationViewer
+          url={`${api}/conversations/${conversation}`}
+          token={token}
+          onClose={() => setConversation(null)}
+          onBadToken={forgetToken}
+        />
+      )}
     </Card>
+  )
+}
+
+function ConversationList({
+  items,
+  onOpen,
+}: {
+  items: ClaudeConversation[] | null
+  onOpen: (id: string) => void
+}) {
+  if (!items) return <p className="muted claude__empty">loading activity…</p>
+  if (items.length === 0) return <p className="muted claude__empty">No conversations yet</p>
+  return (
+    <ul className="convs">
+      {items.map((c) => (
+        <li key={c.id}>
+          <button type="button" className="conv" onClick={() => onOpen(c.id)}>
+            <span className="conv__head">
+              <span className={c.busy ? 'dot dot--ok dot--pulse' : 'dot'} />
+              <span className="conv__title">{c.title || 'Untitled'}</span>
+              <span className="conv__when">{c.busy ? 'working' : ago(c.updatedAt)}</span>
+            </span>
+            {c.last && <span className="conv__last">{c.last}</span>}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// Shared by both viewers: close on Escape or a bad token, and keep a scrolling
+// element pinned to its newest output unless the user scrolled up to read.
+function useViewer<T extends HTMLElement>(error: string | null, onClose: () => void, onBadToken: () => void, dep: unknown) {
+  const ref = useRef<T>(null)
+  const stick = useRef(true)
+
+  useEffect(() => {
+    if (error === 'HTTP 401') {
+      onBadToken()
+      onClose()
+    }
+  }, [error, onBadToken, onClose])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (el && stick.current) el.scrollTop = el.scrollHeight
+  }, [dep])
+
+  const onScroll = () => {
+    const el = ref.current
+    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+  }
+  return { ref, onScroll }
+}
+
+function clock(iso: string): string {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function ConversationViewer({
+  url,
+  token,
+  onClose,
+  onBadToken,
+}: {
+  url: string
+  token: string
+  onClose: () => void
+  onBadToken: () => void
+}) {
+  const { data, error } = usePolling<ClaudeConversationDetail>(url, 2000, token)
+  const { ref, onScroll } = useViewer<HTMLDivElement>(error, onClose, onBadToken, data)
+
+  return createPortal(
+    <div className="modal" onClick={onClose}>
+      <div className="modal__box" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Claude conversation">
+        <div className="card__head">
+          <h2 className="card__title feed__title">{data?.title || 'Conversation'}</h2>
+          <span className={error ? 'card__err' : 'card__badge'}>
+            {error ? `◆ ${error}` : !data ? 'loading' : data.busy ? 'working' : `idle · ${ago(data.updatedAt)}`}
+          </span>
+          <button type="button" className="modal__close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div ref={ref} className="feed" onScroll={onScroll}>
+          {!data ? (
+            <p className="muted">connecting…</p>
+          ) : (
+            data.events.map((e, i) => (
+              <div key={i} className={`feed__item feed__item--${e.kind}${e.failed ? ' feed__item--failed' : ''}`}>
+                <span className="feed__time">{clock(e.at)}</span>
+                {e.kind === 'tool' ? (
+                  <span className="feed__body">
+                    <span className="feed__tool">{e.tool}</span> {e.text}
+                    {e.failed && <span className="feed__fail"> · failed</span>}
+                  </span>
+                ) : (
+                  <span className="feed__body">{e.text}</span>
+                )}
+              </div>
+            ))
+          )}
+          {data?.busy && <p className="feed__working">working…</p>}
+        </div>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -197,32 +342,7 @@ function SessionViewer({
 }) {
   const { data, error } = usePolling<ClaudeScreen>(token ? url : null, 1500, token)
   const segments = useMemo(() => (data ? parseAnsi(data.text) : []), [data])
-  const termRef = useRef<HTMLPreElement>(null)
-  // Follow new output unless the user has scrolled up to read history.
-  const stick = useRef(true)
-
-  useEffect(() => {
-    if (error === 'HTTP 401') {
-      onBadToken()
-      onClose()
-    }
-  }, [error, onBadToken, onClose])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  useLayoutEffect(() => {
-    const el = termRef.current
-    if (el && stick.current) el.scrollTop = el.scrollHeight
-  }, [segments])
-
-  const onScroll = () => {
-    const el = termRef.current
-    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
-  }
+  const { ref: termRef, onScroll } = useViewer<HTMLPreElement>(error, onClose, onBadToken, segments)
 
   // Portal: the card's backdrop-filter would otherwise contain position:fixed.
   return createPortal(
