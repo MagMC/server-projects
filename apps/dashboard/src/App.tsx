@@ -4,6 +4,7 @@ import { bytes, milliCores, pct, thermalLabel, uptime } from './format'
 import type { ContainerInfo, HostStats, K3sData } from './types'
 import { Card } from './Card'
 import { ClaudePanels } from './ClaudePanel'
+import { VpnPanel } from './VpnPanel'
 import './App.css'
 
 function useClock(): Date {
@@ -202,6 +203,7 @@ function App() {
         <section className="grid">
           <HostPanel />
           <DockerPanel />
+          <VpnPanel />
           <K3sPanel />
           <ClaudePanels />
         </section>

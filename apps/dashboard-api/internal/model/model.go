@@ -38,14 +38,14 @@ type HostStats struct {
 
 // ContainerInfo is one Docker container in /docker/containers.
 type ContainerInfo struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Image       string   `json:"image"`
-	State       string   `json:"state"`  // running | exited | ...
-	Status      string   `json:"status"` // "Up 3 hours"
-	CPUPct      *float64 `json:"cpuPct"`
-	MemUsedBytes  *uint64 `json:"memUsedBytes"`
-	MemLimitBytes *uint64 `json:"memLimitBytes"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Image         string   `json:"image"`
+	State         string   `json:"state"`  // running | exited | ...
+	Status        string   `json:"status"` // "Up 3 hours"
+	CPUPct        *float64 `json:"cpuPct"`
+	MemUsedBytes  *uint64  `json:"memUsedBytes"`
+	MemLimitBytes *uint64  `json:"memLimitBytes"`
 }
 
 // K3sNode is one cluster node.
@@ -122,4 +122,37 @@ type ClaudeConversationDetail struct {
 type ClaudeScreen struct {
 	Text  string `json:"text"` // pane contents incl. scrollback, with ANSI escapes
 	Width int    `json:"width"`
+}
+
+// VPNContainer is gluetun or one container sharing its network namespace
+// (network_mode: container:gluetun / service:gluetun).
+type VPNContainer struct {
+	Name   string `json:"name"`
+	State  string `json:"state"`  // running | exited | restarting | ...
+	Health string `json:"health"` // healthy | unhealthy | starting | "" (no healthcheck)
+}
+
+// VPNJobStep is one container's progress through a restart.
+type VPNJobStep struct {
+	Name  string `json:"name"`
+	State string `json:"state"` // pending | restarting | waiting | ok | failed | skipped
+	Note  string `json:"note,omitempty"`
+}
+
+// VPNJob is the latest gluetun stack restart (state "idle" if none has run).
+type VPNJob struct {
+	State      string       `json:"state"` // idle | running | done | failed
+	Step       string       `json:"step"`  // what it's doing / how it ended
+	StartedAt  string       `json:"startedAt,omitempty"`
+	FinishedAt string       `json:"finishedAt,omitempty"`
+	Steps      []VPNJobStep `json:"steps"` // gluetun first, then its dependents
+}
+
+// VPNStatus is the /vpn response.
+type VPNStatus struct {
+	Gluetun        *VPNContainer  `json:"gluetun"` // null if the container is missing
+	Dependents     []VPNContainer `json:"dependents"`
+	Job            VPNJob         `json:"job"`
+	ControlEnabled bool           `json:"controlEnabled"`
+	Error          string         `json:"error,omitempty"`
 }

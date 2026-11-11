@@ -25,6 +25,10 @@ type Config struct {
 	// Where Claude Code keeps its transcripts, seen through the / mount. Each
 	// session's conversations are found here by its workdir.
 	ClaudeProjectsDir string
+
+	// The gluetun VPN container; the dashboard restarts it and then every
+	// container using its network.
+	GluetunContainer string
 }
 
 // ClaudeSession is one tmux session the dashboard shows and controls.
@@ -95,5 +99,7 @@ func Load() Config {
 		ControlToken:   os.Getenv("CLAUDE_CONTROL_TOKEN"),
 
 		ClaudeProjectsDir: env("CLAUDE_PROJECTS_DIR", defaultProjectsDir()),
+
+		GluetunContainer: env("GLUETUN_CONTAINER", "gluetun"),
 	}
 }

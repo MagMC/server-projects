@@ -100,3 +100,31 @@ export interface ClaudeScreen {
   text: string
   width: number
 }
+
+export interface VpnContainer {
+  name: string
+  state: string
+  health: string // healthy | unhealthy | starting | '' (no healthcheck)
+}
+
+export interface VpnJobStep {
+  name: string
+  state: 'pending' | 'restarting' | 'waiting' | 'ok' | 'failed' | 'skipped'
+  note?: string
+}
+
+export interface VpnJob {
+  state: 'idle' | 'running' | 'done' | 'failed'
+  step: string
+  startedAt?: string
+  finishedAt?: string
+  steps: VpnJobStep[]
+}
+
+export interface VpnStatus {
+  gluetun: VpnContainer | null
+  dependents: VpnContainer[]
+  job: VpnJob
+  controlEnabled: boolean
+  error?: string
+}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/magmc/server-projects/dashboard-api/internal/claude"
 	"github.com/magmc/server-projects/dashboard-api/internal/collect"
+	"github.com/magmc/server-projects/dashboard-api/internal/vpn"
 )
 
 type Server struct {
@@ -21,11 +22,13 @@ type Server struct {
 	k3s       *collect.K3sCollector
 	k3sErr    error
 	claude    []*claude.Controller // one per configured tmux session
-	token     string // control token for claude routes; empty disables them
+	vpn       *vpn.Restarter       // gluetun stack restarts; nil if docker is unreachable
+	vpnErr    error
+	token     string // control token for claude + vpn routes; empty disables them
 }
 
-func NewServer(host *collect.HostCollector, docker *collect.DockerCollector, dockerErr error, k3s *collect.K3sCollector, k3sErr error, cl []*claude.Controller, token string) *Server {
-	return &Server{host: host, docker: docker, dockerErr: dockerErr, k3s: k3s, k3sErr: k3sErr, claude: cl, token: token}
+func NewServer(host *collect.HostCollector, docker *collect.DockerCollector, dockerErr error, k3s *collect.K3sCollector, k3sErr error, cl []*claude.Controller, vr *vpn.Restarter, vrErr error, token string) *Server {
+	return &Server{host: host, docker: docker, dockerErr: dockerErr, k3s: k3s, k3sErr: k3sErr, claude: cl, vpn: vr, vpnErr: vrErr, token: token}
 }
 
 func (s *Server) Routes() http.Handler {
@@ -45,6 +48,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /claude/{session}/conversations/{id}", s.requireToken(s.handleClaudeConversation))
 	mux.HandleFunc("POST /claude/{session}/start", s.requireToken(s.handleClaudeStart))
 	mux.HandleFunc("POST /claude/{session}/stop", s.requireToken(s.handleClaudeStop))
+
+	// gluetun VPN stack: status + restart progress is public; the restart
+	// itself (gluetun, then everything on its network) needs the token.
+	mux.HandleFunc("GET /vpn", s.handleVPNStatus)
+	mux.HandleFunc("POST /vpn/restart", s.requireToken(s.handleVPNRestart))
 	return logRequests(mux)
 }
 

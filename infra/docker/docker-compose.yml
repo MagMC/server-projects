@@ -24,8 +24,9 @@ services:
     networks:
       - dashboard-net
 
-  # Read-only data backend (Go). Reachable only via the dashboard nginx /api/
-  # proxy on the shared network — no published host port, so it's off the LAN.
+  # Data backend (Go), read-only except the token-protected Claude and VPN
+  # controls. Reachable only via the dashboard nginx /api/ proxy on the shared
+  # network — no published host port, so it's off the LAN.
   dashboard-api:
     build:
       context: ../../apps/dashboard-api
@@ -57,12 +58,18 @@ services:
       # Claude Code's transcripts: what the conversations run from each
       # session's workdir are doing (read-only, behind the token).
       CLAUDE_PROJECTS_DIR: /host/root/home/mag/.claude/projects
-      # Bearer token for viewing/starting/stopping a session; lives in the
-      # gitignored infra/docker/.env. Unset = those routes are disabled.
+      # Bearer token for viewing/starting/stopping a session and restarting
+      # the VPN stack; lives in the gitignored infra/docker/.env. Unset = those
+      # routes are disabled.
       CLAUDE_CONTROL_TOKEN: ${CLAUDE_CONTROL_TOKEN:-}
+      # VPN panel: restarts this container, waits until it's healthy, then
+      # restarts every container using its network (network_mode: service:gluetun).
+      GLUETUN_CONTAINER: gluetun
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      # :ro only stops the socket file being replaced; the API can still make
+      # write calls through it (needed for the VPN restart).
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/rancher/k3s/k3s.yaml:/etc/rancher/k3s/k3s.yaml:ro
       - /proc:/host/proc:ro

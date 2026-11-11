@@ -12,6 +12,7 @@ import (
 	"github.com/magmc/server-projects/dashboard-api/internal/claude"
 	"github.com/magmc/server-projects/dashboard-api/internal/collect"
 	"github.com/magmc/server-projects/dashboard-api/internal/config"
+	"github.com/magmc/server-projects/dashboard-api/internal/vpn"
 )
 
 func main() {
@@ -42,7 +43,12 @@ func main() {
 		log.Printf("CLAUDE_CONTROL_TOKEN not set: claude screen/conversations/start/stop disabled")
 	}
 
-	srv := api.NewServer(host, docker, dockerErr, k3s, k3sErr, cl, cfg.ControlToken)
+	vr, vrErr := vpn.New(cfg.GluetunContainer)
+	if vrErr != nil {
+		log.Printf("vpn restarter unavailable: %v", vrErr)
+	}
+
+	srv := api.NewServer(host, docker, dockerErr, k3s, k3sErr, cl, vr, vrErr, cfg.ControlToken)
 
 	addr := ":" + cfg.Port
 	httpSrv := &http.Server{

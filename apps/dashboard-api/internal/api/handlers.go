@@ -9,6 +9,7 @@ import (
 
 	"github.com/magmc/server-projects/dashboard-api/internal/claude"
 	"github.com/magmc/server-projects/dashboard-api/internal/model"
+	"github.com/magmc/server-projects/dashboard-api/internal/vpn"
 )
 
 const requestTimeout = 8 * time.Second
@@ -160,4 +161,38 @@ func writeClaudeErr(w http.ResponseWriter, err error) {
 		status = http.StatusNotFound
 	}
 	writeErr(w, status, err.Error())
+}
+
+func (s *Server) handleVPNStatus(w http.ResponseWriter, r *http.Request) {
+	if s.vpnErr != nil {
+		writeErr(w, http.StatusServiceUnavailable, "docker unavailable: "+s.vpnErr.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+	st := s.vpn.Status(ctx)
+	st.ControlEnabled = s.token != ""
+	writeJSON(w, http.StatusOK, st)
+}
+
+// handleVPNRestart kicks off the restart and returns at once (it takes minutes,
+// far past the proxy timeout); the client follows progress via GET /vpn.
+func (s *Server) handleVPNRestart(w http.ResponseWriter, r *http.Request) {
+	if s.vpnErr != nil {
+		writeErr(w, http.StatusServiceUnavailable, "docker unavailable: "+s.vpnErr.Error())
+		return
+	}
+	if err := s.vpn.Start(); err != nil {
+		status := http.StatusBadGateway
+		if errors.Is(err, vpn.ErrBusy) {
+			status = http.StatusConflict
+		}
+		writeErr(w, status, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+	st := s.vpn.Status(ctx)
+	st.ControlEnabled = true
+	writeJSON(w, http.StatusAccepted, st)
 }
